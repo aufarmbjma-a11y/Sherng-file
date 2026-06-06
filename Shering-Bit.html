@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEON SHARE - File Sharing</title>
+  <style>
+    :root {
+      --neon-green: #00ff9f;
+      --dark: #0a0a0a;
+      --gray: #1a1a1a;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: var(--dark);
+      color: var(--neon-green);
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      background-image: 
+        linear-gradient(rgba(0, 255, 159, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 159, 0.03) 1px, transparent 1px);
+      background-size: 30px 30px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    h1 {
+      font-size: 3rem;
+      text-shadow: 0 0 20px var(--neon-green);
+      letter-spacing: 4px;
+    }
+    .upload-area {
+      border: 3px dashed var(--neon-green);
+      border-radius: 15px;
+      padding: 40px;
+      text-align: center;
+      background: var(--gray);
+      margin-bottom: 30px;
+      transition: all 0.3s;
+    }
+    .upload-area:hover {
+      border-color: #00ffcc;
+      box-shadow: 0 0 30px rgba(0, 255, 159, 0.5);
+    }
+    input[type="file"] {
+      display: none;
+    }
+    .btn {
+      background: transparent;
+      color: var(--neon-green);
+      border: 2px solid var(--neon-green);
+      padding: 12px 30px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.3s;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    .btn:hover {
+      background: var(--neon-green);
+      color: black;
+      box-shadow: 0 0 25px var(--neon-green);
+    }
+    .file-list {
+      margin-top: 30px;
+    }
+    .file-item {
+      background: var(--gray);
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-left: 5px solid var(--neon-green);
+    }
+    .password-input {
+      padding: 12px;
+      background: #111;
+      border: 2px solid var(--neon-green);
+      color: var(--neon-green);
+      width: 100%;
+      max-width: 400px;
+      margin: 10px auto;
+      display: block;
+      border-radius: 8px;
+    }
+    .status {
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>NEON SHARE</h1>
+      <p>File sharing hanya upload oleh kamu</p>
+    </header>
+
+    <div>
+      <input type="password" id="password" class="password-input" placeholder="Masukkan password (default: admin123)">
+      <div class="upload-area" id="uploadArea">
+        <p>📤 Drop file di sini atau klik untuk upload</p>
+        <input type="file" id="fileInput" multiple>
+        <button class="btn" onclick="document.getElementById('fileInput').click()">Pilih File</button>
+      </div>
+    </div>
+
+    <div class="file-list" id="fileList">
+      <h2>📁 File yang sudah diupload</h2>
+    </div>
+  </div>
+
+  <script>
+    const files = JSON.parse(localStorage.getItem('neonFiles')) || [];
+    const PASSWORD = "admin123"; // Ganti password ini sesukamu
+
+    function renderFiles() {
+      const fileList = document.getElementById('fileList');
+      fileList.innerHTML = `<h2>📁 File yang sudah diupload (${files.length})</h2>`;
+      
+      files.forEach((file, index) => {
+        const div = document.createElement('div');
+        div.className = 'file-item';
+        div.innerHTML = `
+          <div>
+            <strong>${file.name}</strong><br>
+            <small>${(file.size / 1024 / 1024).toFixed(2)} MB • ${new Date(file.date).toLocaleString('id-ID')}</small>
+          </div>
+          <a href="${file.data}" download="${file.name}" class="btn" style="padding: 8px 16px; font-size: 0.9rem;">DOWNLOAD</a>
+        `;
+        fileList.appendChild(div);
+      });
+    }
+
+    // Upload file
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      const pass = document.getElementById('password').value;
+      if (pass !== PASSWORD) {
+        alert("❌ Password salah!");
+        return;
+      }
+
+      Array.from(e.target.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+          const customName = prompt("Masukkan nama file (kosongkan untuk pakai nama asli):", file.name) || file.name;
+          
+          files.unshift({
+            name: customName,
+            size: file.size,
+            date: new Date().toISOString(),
+            data: ev.target.result
+          });
+          
+          localStorage.setItem('neonFiles', JSON.stringify(files));
+          renderFiles();
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    // Drag & Drop
+    const uploadArea = document.getElementById('uploadArea');
+    uploadArea.addEventListener('dragover', e => {
+      e.preventDefault();
+      uploadArea.style.background = '#112211';
+    });
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.style.background = '';
+    });
+    uploadArea.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadArea.style.background = '';
+      const pass = document.getElementById('password').value;
+      if (pass !== PASSWORD) {
+        alert("❌ Password salah!");
+        return;
+      }
+      // Handle dropped files (mirip change event)
+      const dt = e.dataTransfer;
+      if (dt.files.length) {
+        const input = document.getElementById('fileInput');
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change'));
+      }
+    });
+
+    // Render awal
+    renderFiles();
+  </script>
+</body>
+</html>
